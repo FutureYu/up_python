@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>成功—写完了吗</title>
+    <link rel="stylesheet" href="/static/list.css">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+</head>
+
+<body>
+    <div class="lowin">
+        <div class="lowin-brand">
+                {% if stuqq %}
+                <img src="http://q1.qlogo.cn/g?b=qq&nk={{stuqq}}&s=640" alt="logo">
+                {% else %}
+                <img src="/static/kodinger.jpg" alt="logo">
+                {% endif %}
+        </div>
+        <div class="lowin-wrapper">
+            <div class="lowin-box lowin-login">
+                <div class="lowin-box-inner">
+                    <h1 id="hello">成功!</h1>
+                    <h3>{{fileName}}</h3>
+                    <div class="text-foot">
+							<a href="/index" class="register-link">返回首页</a>
+					</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

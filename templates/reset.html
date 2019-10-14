@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>重置密码—写完了吗</title>
+    <link rel="stylesheet" href="/static/index.css">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+</head>
+
+<body>
+    <div class="lowin">
+        <div class="lowin-brand">
+            {% if stuqq %}
+            <img src="http://q1.qlogo.cn/g?b=qq&nk={{stuqq}}&s=640" alt="logo">
+            {% else %}
+            <img src="/static/kodinger.jpg" alt="logo">
+            {% endif %}
+        </div>
+        <div class="lowin-wrapper">
+            <div class="lowin-box lowin-login">
+                <div class="lowin-box-inner">
+                    <form method="post" action="/resetpwd" enctype="multipart/form-data">
+                        <p>重置密码</p>
+                        {% if not login %}
+                        <div class="lowin-group">
+                            <label>学号</label>
+                            <input type="text" name="stuid" class="lowin-input">
+                        </div>
+                        {% else %}
+                        <div style="display: none" class="lowin-group">
+                            <label>学号</label>
+                            <input type="password" value="{{stuid}}" name="stuid" class="lowin-input">
+                        </div>
+                        {% endif %}
+                        {% if not forget %}
+                        <div class="lowin-group password-group">
+                            <label>旧密码</label>
+                            <input type="password" name="oldpwd" autocomplete="current-password" class="lowin-input">
+                        </div>
+                        {% endif %}
+                        <div class="lowin-group password-group">
+                            <label>新密码</label>
+                            <input type="password" name="newpwd" autocomplete="current-password" class="lowin-input">
+                        </div>
+                        <div class="lowin-group password-group">
+                            <label>再次输入新密码</label>
+                            <input type="password" name="newpwd2" autocomplete="current-password" class="lowin-input">
+                        </div>
+                        <input class="lowin-btn login-btn" type="submit" value="确认">
+                        </input>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>提交—写完了吗</title>
+    <link rel="stylesheet" href="/static/list.css">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+</head>
+
+<body>
+    <div class="lowin">
+        <div class="lowin-brand">
+            {% if stuqq %}
+            <img src="http://q1.qlogo.cn/g?b=qq&nk={{stuqq}}&s=640" alt="logo">
+            {% else %}
+            <img src="/static/kodinger.jpg" alt="logo">
+            {% endif %}
+        </div>
+        <div class="lowin-wrapper">
+            <div class="lowin-box lowin-login">
+                <div class="lowin-box-inner">
+                    <form id="form1" method="post" action="/api/upload/{{courseName}}" enctype="multipart/form-data">
+                        <h1 id="hello">{{courseName}}</h1>
+                        <p>接受文件类型：{{ext}}</p>
+                        <p>接受文件大小：{{size}}M</p>
+                        <p>截止时间：{{endTime}}</p>
+                        <p>重复提交将会覆盖前一次文件</p>
+                        <div class="lowin-group">
+                            <label id="file">文件</label>
+                            <input id="File1" type="file" name="myfile" class="lowin-input" />
+                        </div>
+                        <input class="lowin-btn login-btn" type="submit" value="上传">
+                        </input>
+                    </form>
+                    <br>
+                    <br>
+                    <hr>
+                    <p>已交列表 - {{num}} 人已提交</p>
+                    {% for name in names %}
+                        {% if num == 0 %}
+                        <p>{{name}}</p>
+                        {% elif stuname == name["name"].split(" - ")[-1] %}
+                            <a href="/api/download/{{courseName}}">{{name["name"]}} - {{name["changetime"]}}</a>
+                        {% else %} 
+                        <p>{{name["name"]}} - {{name["changetime"]}}</p>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

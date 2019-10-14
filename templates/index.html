@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>登录—写完了吗</title>
+	<link rel="stylesheet" href="/static/index.css">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+</head>
+
+<body>
+	<div class="lowin">
+		<div class="lowin-brand">
+			{% if stuqq %}
+			<img src="http://q1.qlogo.cn/g?b=qq&nk={{stuqq}}&s=640" alt="logo">
+			{% else %}
+			<img src="/static/kodinger.jpg" alt="logo">
+			{% endif %}
+		</div>
+		<div class="lowin-wrapper">
+			<div class="lowin-box lowin-login">
+				<div class="lowin-box-inner">
+					<form method="post" action="/login" enctype="multipart/form-data">
+						<p>登录</p>
+						<div class="lowin-group">
+							<label>学号</label>
+							<input type="text" name="stuid" class="lowin-input">
+						</div>
+						<div class="lowin-group password-group">
+							<label>密码 <a href="/forget" class="forgot-link">忘记密码?</a></label>
+							<input type="password" name="pwd" autocomplete="current-password" class="lowin-input">
+						</div>
+						<input class="lowin-btn login-btn" type="submit" value="登录">
+						</input>
+
+						<div class="text-foot">
+							觉得当前密码不安全? <a href="/reset" class="register-link">重置密码</a>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

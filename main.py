@@ -1,5 +1,5 @@
 # coding： utf8
-# 29362 
+# 24365 
 from flask import Flask, render_template, request, make_response, send_from_directory, redirect
 import time
 import os
@@ -26,7 +26,7 @@ class Course:
     def GetSlimCourseList():
         res = []
         mycol = db["course"]
-        mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.ASCENDING).limit(6) 
+        mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.DESCENDING).limit(6) 
         if mydoc == None:
             return res
         else:
@@ -37,13 +37,14 @@ class Course:
                 if doc["_stamp"] < int(time.time()):
                     switch = False
                 res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "switch": switch})
+            res.reverse()
             return res
 
     @staticmethod
     def GetSlimDdlList():
         res = []
         mycol = db["course"]
-        mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.ASCENDING).limit(6) 
+        mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.DESCENDING).limit(6) 
         if mydoc == None:
             return res
         else:
@@ -54,6 +55,7 @@ class Course:
                 if doc["_stamp"] < int(time.time()):
                     switch = False
                 res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "note": doc["_note"], "switch": switch})
+            res.reverse()
             return res
 
 
@@ -92,6 +94,7 @@ class Cookie:
             self.content = mydoc["_content"]
             self.level = mydoc["_level"]
             self.stamp = mydoc["_stamp"]
+            self.admin = mydoc["_admin"]
             if mydoc["_stamp"] + 360 < int(time.time()):
                 return False
             else:
@@ -114,6 +117,7 @@ class Cookie:
             self.content = mydoc["_content"]
             self.level = mydoc["_level"]
             self.stamp = mydoc["_stamp"]
+            self.admin = mydoc["_admin"]
             if mydoc["_stamp"] + 360 < int(time.time()):
                 return False
             else:
@@ -132,7 +136,7 @@ class Cookie:
 
         mycol = db["cookie"]
         newvalues = {"_stuid": stuid, "_stuname": mydoc1["_name"], "_stuqq": mydoc1["_qq"],
-                     "_content": random_str, "_level": level, "_stamp": stamp}
+                     "_content": random_str, "_level": level, "_stamp": stamp, "_admin": mydoc1["_admin"]}
         mycol.insert_one(newvalues)
         self.stuid = stuid
         self.stuname = mydoc1["_name"]
@@ -140,6 +144,7 @@ class Cookie:
         self.content = random_str
         self.level = level
         self.stamp = stamp
+        self.admin = mydoc1["_admin"]
         return True
 
 
@@ -157,6 +162,7 @@ class Student:
             self.pwd = mydoc["_pwd"]
             self.que = mydoc["_que"]
             self.ans = mydoc["_ans"]
+            self.admin = mydoc["_admin"]
             return True
 
     def BindStudent(self, stuid, que, ans):
@@ -187,9 +193,15 @@ class Student:
 def index():
     cookie = Cookie()
     if cookie.GetCookieDetail(request.cookies.get("id")):
-        resp = make_response(render_template(
-            'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
-        return resp
+        print(cookie.admin, flush=True)
+        if cookie.admin:
+            resp = make_response(render_template(
+                'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
+            return resp
+        else:
+            resp = make_response(render_template(
+                'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
+            return resp
 
     resp = make_response(render_template('index.html'), 200)
     resp.delete_cookie("id")
@@ -267,7 +279,7 @@ def resetpwd():
     if request.cookies.get("id") == None:
         student = Student()
         student.GetStuDetail(stuid)
-        if student.pwd == oldpwd and newpwd == newpwd2:
+        if student.pwd == oldpwd and newpwd == newpwd2 != "":
             if not student.ChangePwd(student.stuid, newpwd):
                 resp = make_response(render_template(
                     "error.html", errcode="修改失败", stuqq=student.qq))
@@ -330,7 +342,11 @@ def bind():
 
     que = request.form.get("que")
     ans = request.form.get("ans")
-
+    if que == "" or ans == "":
+        resp = make_response(render_template(
+            "error.html", errcode="错误的问题或回答", stuqq=cookie.stuqq), 401)
+        resp.delete_cookie("id")
+        return resp
     student = Student()
     if student.BindStudent(cookie.stuid, que, ans):
         resp = make_response(render_template(
@@ -352,10 +368,16 @@ def login():
     if not stu.pwd == pwd:
         resp = make_response(render_template(
             "error.html", errcode="错误的学号或密码"), 401)
+    if pwd == "":
+        resp = make_response(render_template(
+            "error.html", errcode="密码不能为空"), 401)
+    # if not stu.pwd == pwd == "":
+    #     resp = make_response(render_template(
+    #         "error.html", errcode="密码不能为空"), 401)
         return resp
     cookie = Cookie()
     cookie.GenerateCookie(stu.stuid, 1)
-    if stu.que == stu.ans == "":
+    if stu.que == "" or stu.ans == "":
         resp = make_response(render_template(
             'bind.html', stuqq=stu.qq, stuid=stu.stuid, stuname=stu.name), 200)
         resp.set_cookie("id", cookie.content, max_age=360)
@@ -380,7 +402,7 @@ def upload(courseName):
         resp = make_response(render_template(
             "error.html", errcode="作业不存在", stuqq=cookie.stuqq), 404)
         return resp
-    if int(time.time()) > course.stamp:
+    if int(time.time()) > course.stamp and not cookie.admin:
         resp = make_response(render_template(
             "error.html", errcode="作业已停止提交"), 200)
         return resp
@@ -403,12 +425,37 @@ def upload(courseName):
         names = ["还没有人交哦~快快来交"]
     timeArray = time.localtime(course.stamp)
     endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-    return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=course.ext, size=course.size, endTime=endTime)
+    if cookie.admin:
+        return render_template('upload_admin.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=course.ext, size=course.size, endTime=endTime)
+    else:
+        return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=course.ext, size=course.size, endTime=endTime)
 
 
+@app.route('/api/download/all/<courseName>', methods=['GET'], strict_slashes=False)
+def api_download_all(courseName):
+    cookie = Cookie()
+    if not cookie.GetCookieDetail(request.cookies.get("id")) and cookie.admin:
+        resp = make_response(render_template(
+            "error.html", errcode="cookie 过期"))
+        resp.delete_cookie("id")
+        return resp
+    course = Course()
+    if not course.GetCourseDetail(courseName):
+        resp = make_response(render_template(
+            "error.html", errcode="文件不存在"))
+        return resp
+    file_dir = os.path.join(
+        basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
+    os.system(f"cd {file_dir} && zip -q -r '1617304 - {courseName}.zip' * -x '1617304 - {courseName}.zip'")
 
-@app.route('/api/download/<courseName>', methods=['GET'], strict_slashes=False)
-def api_download(courseName):
+    fileName = f"1617304 - {courseName}.zip"
+    
+    response = make_response(send_from_directory(
+        file_dir, fileName, as_attachment=True, attachment_filename=fileName))
+    return response
+
+@app.route('/api/download/<courseName>/<stuid>', methods=['GET'], strict_slashes=False)
+def api_download(courseName, stuid):
     cookie = Cookie()
     if not cookie.GetCookieDetail(request.cookies.get("id")):
         resp = make_response(render_template(
@@ -420,7 +467,10 @@ def api_download(courseName):
         resp = make_response(render_template(
             "error.html", errcode="文件不存在"))
         return resp
-    fileName = cookie.stuid + " - " + cookie.stuname + "." + course.ext
+    if cookie.admin:
+        fileName = stuid + "." + course.ext
+    else:
+        fileName = cookie.stuid + " - " + cookie.stuname + "." + course.ext
     file_dir = os.path.join(
         basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
     response = make_response(send_from_directory(

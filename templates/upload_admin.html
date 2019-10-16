@@ -32,19 +32,21 @@
                             <input id="File1" type="file" name="myfile" class="lowin-input" />
                         </div>
                         <input class="lowin-btn login-btn" type="submit" value="上传">
-                        </input>
                     </form>
                     <br>
                     <br>
                     <hr>
                     <p>已交列表 - {{num}} 人已提交</p>
+                    <a href="/api/download/all/{{courseName}}">打包下载</a>
+                    <br>
+                    <br>
                     {% for name in names %}
                         {% if num == 0 %}
-                        <p>{{name}}</p>
-                        {% elif stuname == name["name"].split(" - ")[-1] %}
-                            <a href="/api/download/{{courseName}}/{{name['name']}}">{{name["name"]}} - {{name["changetime"]}}</a>
+                            <p>{{name}}</p>
                         {% else %} 
-                            <p>{{name["name"]}} - {{name["changetime"]}}</p>
+                            <a href="/api/download/{{courseName}}/{{name['name']}}">{{name["name"]}} - {{name["changetime"]}}</a>
+                            <br>
+                            <br>
                         {% endif %}
                     {% endfor %}
                 </div>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>作业列表—写完了吗</title>
+    <link rel="stylesheet" href="/static/list.css">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+</head>
+
+<body>
+    <div class="lowin">
+        <div class="lowin-brand">
+            {% if stuqq %}
+            <img src="http://q1.qlogo.cn/g?b=qq&nk={{stuqq}}&s=640" alt="logo">
+            {% else %}
+            <img src="/static/kodinger.jpg" alt="logo">
+            {% endif %}
+        </div>
+        <div class="lowin-wrapper">
+            <div class="lowin-box lowin-login">
+                <div class="lowin-box-inner">
+                    <h1 id="hello">你好，{{stuname}}(Admin)</h1>
+                    <p>请选择要提交的作业</p>
+                    {% for course in courses %}
+                    {% if course["switch"] %}
+                    <a class="course" href="/upload/{{course['name']}}">{{course['name']}}</a>                    
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
+                    {% else %}
+                    <a class="course" href="/upload/{{course['name']}}">{{course['name']}}</a>   
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
+                    {% endif %}
+                    {% endfor %}
+                    <hr>
+                    <p>其他方式提交的作业，点击可查看详情</p>
+                    {% for ddl in ddls %}
+                    {% if ddl["switch"] %}
+                    <a class="course" href="{{ddl['note']}}">{{ddl['name']}}</a>                    
+                    <p class="course1">截止时间：{{ddl['showtime']}}</p>
+                    <br>
+                    {% else %}
+                    <a class="course" href="{{ddl['note']}}">{{ddl['name']}}</a>       
+                    <p class="course1">截止时间：{{ddl['showtime']}}</p>
+                    <br>
+                    {% endif %}
+                    {% endfor %}
+
+                    <br>
+                    <hr>
+                    <div class="text-foot">
+                        觉得当前密码不安全? <a href="/reset" class="register-link">重置密码</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

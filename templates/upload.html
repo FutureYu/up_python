@@ -41,7 +41,7 @@
                     {% for name in names %}
                         {% if num == 0 %}
                         <p>{{name}}</p>
-                        {% elif stuname == name["name"].split(" - ")[-1] %}
+                        {% elif stuname == name["name"].split(" - ")[1] %}
                             <a href="/api/download/{{courseName}}/{{name['name']}}">{{name["name"]}} - {{name["changetime"]}}</a>
                         {% else %} 
                             <p>{{name["name"]}} - {{name["changetime"]}}</p>

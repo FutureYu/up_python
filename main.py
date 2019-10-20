@@ -1,5 +1,5 @@
 # coding： utf8
-# 24365 
+# 20552 
 from flask import Flask, render_template, request, make_response, send_from_directory, redirect
 import time
 import os
@@ -9,6 +9,8 @@ import requests
 import io
 import sys
 import pymongo
+import re
+import threading
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 db = pymongo.MongoClient(
@@ -20,6 +22,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+def ClearCookies():
+    mydoc = db["cookie"] 
+    while True:
+        print("clear cookies", flush=True)
+        mydoc.delete_many({"_stamp": {'$lt': time.time() - 60 * 60}})
+        time.sleep(3600)
 
 class Course:
     @staticmethod
@@ -193,7 +201,6 @@ class Student:
 def index():
     cookie = Cookie()
     if cookie.GetCookieDetail(request.cookies.get("id")):
-        print(cookie.admin, flush=True)
         if cookie.admin:
             resp = make_response(render_template(
                 'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
@@ -285,6 +292,11 @@ def resetpwd():
                     "error.html", errcode="修改失败", stuqq=student.qq))
                 resp.delete_cookie("id")
                 return resp
+                if not (re.match(r'([0-9]+(\W+|\_+|[A-Za-z]+))+|([A-Za-z]+(\W+|\_+|\d+))+|((\W+|\_+)+(\d+|\w+))+', pwd) and len(pwd) >= 8):
+                    resp = make_response(render_template(
+                        "error.html", errcode="修改失败，密码太过简单", stuqq=student.qq))
+                    resp.delete_cookie("id")
+                    return resp
             resp = make_response(render_template(
                 "success.html", fileName="修改成功"), 200)
             resp.delete_cookie("id")
@@ -293,6 +305,8 @@ def resetpwd():
             "error.html", errcode="旧密码错误或两次输入不一致"))
         resp.delete_cookie("id")
         return resp
+        
+
 
     cookie = Cookie()
     if cookie.GetCookieDetail(request.cookies.get("id")):
@@ -362,26 +376,36 @@ def login():
     stuid = request.form.get("stuid")
     pwd = request.form.get("pwd")
     stu = Student()
+
+
     if not stu.GetStuDetail(stuid):
         resp = make_response(render_template(
             "error.html", errcode="错误的学号或密码"), 401)
+        return resp
     if not stu.pwd == pwd:
         resp = make_response(render_template(
             "error.html", errcode="错误的学号或密码"), 401)
-    if pwd == "":
+        return resp
+    if not (re.match(r'([0-9]+(\W+|\_+|[A-Za-z]+))+|([A-Za-z]+(\W+|\_+|\d+))+|((\W+|\_+)+(\d+|\w+))+', pwd) and len(pwd) >= 8):
         resp = make_response(render_template(
-            "error.html", errcode="密码不能为空"), 401)
-    # if not stu.pwd == pwd == "":
-    #     resp = make_response(render_template(
-    #         "error.html", errcode="密码不能为空"), 401)
+            "error.html", errcode="密码太过简单，请重设"), 401)
         return resp
     cookie = Cookie()
     cookie.GenerateCookie(stu.stuid, 1)
+
     if stu.que == "" or stu.ans == "":
         resp = make_response(render_template(
             'bind.html', stuqq=stu.qq, stuid=stu.stuid, stuname=stu.name), 200)
         resp.set_cookie("id", cookie.content, max_age=360)
         return resp
+
+
+    # 维护中
+    # if not stu.admin:
+    #     resp = make_response(render_template(
+    #         "error.html", errcode="正在维护...请稍后再试"), 401)
+    #     return resp
+    # 结束维护
 
     resp = make_response(redirect("/index"))
     resp.set_cookie("id", cookie.content, max_age=360)
@@ -415,6 +439,8 @@ def upload(courseName):
     filenames = os.listdir(file_dir)
     names = []
     for i, name in enumerate(filenames):
+        if "1617304" in name:
+            continue 
         filestamp = os.stat(f"{file_dir}/{filenames[i]}").st_mtime
         timeArray = time.localtime(filestamp)
         changetime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
@@ -470,7 +496,10 @@ def api_download(courseName, stuid):
     if cookie.admin:
         fileName = stuid + "." + course.ext
     else:
-        fileName = cookie.stuid + " - " + cookie.stuname + "." + course.ext
+        if course.note == "":
+            fileName = f"{cookie.stuid} - {cookie.stuname}.{course.ext}"  # 修改了上传的文件名
+        else:
+            fileName = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{course.ext}"  # 修改了上传的文件名
     file_dir = os.path.join(
         basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
     response = make_response(send_from_directory(
@@ -492,7 +521,6 @@ def api_upload(courseName):
         resp = make_response(render_template(
             "error.html", errcode="作业名错误", stuqq=cookie.stuqq))
         return resp
-    print(123, flush=True)
     file_dir = os.path.join(
         basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
     if not os.path.exists(file_dir):
@@ -505,13 +533,16 @@ def api_upload(courseName):
             resp = make_response(render_template(
                 "error.html", errcode="文件类型错误", stuqq=cookie.stuqq))
             return resp
-        print(87891, flush=True)
         # size = len(f.read())
         # if not course.size <= size * 1024 * 1024:
         #     resp = make_response(render_template(
         #         "error.html", errcode="文件过大", stuqq=cookie.stuqq))
         #     return resp
-        new_filename = cookie.stuid + " - " + cookie.stuname + '.' + ext  # 修改了上传的文件名
+        if course.note == "":
+            new_filename = f"{cookie.stuid} - {cookie.stuname}.{course.ext}"  # 修改了上传的文件名
+        else:
+            new_filename = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{course.ext}"  # 修改了上传的文件名
+
         fn = os.path.join(file_dir, new_filename)
         # f.seek(0,0)
         f.save(fn)  # 保存文件到upload目录
@@ -533,4 +564,5 @@ def internal_error(error):
 
 
 if __name__ == '__main__':
+    threading.Thread(target=ClearCookies).start()
     app.run(debug=True, threaded=True, host="0.0.0.0", port=5000)

@@ -25,11 +25,11 @@
                     <p>请选择要提交的作业</p>
                     {% for course in courses %}
                     {% if course["switch"] %}
-                    <a class="course" href="/upload/{{course['name']}}">{{course['name']}}</a>                    
+                    <a class="course" href="/upload/{{course['name']}}">【正在收集】{{course['name']}}</a>                    
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="/upload/{{course['name']}}">{{course['name']}}</a>   
+                    <a class="course" href="/upload/{{course['name']}}">【停止收集】{{course['name']}}</a>   
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
                     {% endif %}
@@ -38,11 +38,11 @@
                     <p>其他方式提交的作业，点击可查看详情</p>
                     {% for ddl in ddls %}
                     {% if ddl["switch"] %}
-                    <a class="course" href="{{ddl['note']}}">{{ddl['name']}}</a>                    
+                    <a class="course" href="{{ddl['note']}}">【正在收集】{{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="{{ddl['note']}}">{{ddl['name']}}</a>       
+                    <a class="course" href="{{ddl['note']}}">【停止收集】{{ddl['name']}}</a>       
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% endif %}

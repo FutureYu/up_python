@@ -24,12 +24,16 @@
                     <h1 id="hello">你好，{{stuname}}(Admin)</h1>
                     <p>请选择要提交的作业</p>
                     {% for course in courses %}
-                    {% if course["switch"] %}
-                    <a class="course" href="/upload/{{course['name']}}">【正在收集】{{course['name']}}</a>                    
+                    {% if course["switch"] and course["sameDay"]%}
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/yellow.png" height=10 weight=10> {{course['name']}}</a>                    
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
+                    {% elif course["switch"] and not course["sameDay"]%}
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/green.png" height=10 weight=10> {{course['name']}}</a>                    
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="/upload/{{course['name']}}">【停止收集】{{course['name']}}</a>   
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/red.png" height=10 weight=10> {{course['name']}}</a>   
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
                     {% endif %}
@@ -37,12 +41,16 @@
                     <hr>
                     <p>其他方式提交的作业，点击可查看详情</p>
                     {% for ddl in ddls %}
-                    {% if ddl["switch"] %}
-                    <a class="course" href="{{ddl['note']}}">【正在收集】{{ddl['name']}}</a>                    
+                    {% if ddl["switch"] and ddl["sameDay"]%}
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/yellow.png" height=10 weight=10> {{ddl['name']}}</a>                    
+                    <p class="course1">截止时间：{{ddl['showtime']}}</p>
+                    <br>
+                    {% elif ddl["switch"] and not ddl["sameDay"]%}
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/green.png" height=10 weight=10> {{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="{{ddl['note']}}">【停止收集】{{ddl['name']}}</a>       
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/red.png" height=10 weight=10> {{ddl['name']}}</a>       
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% endif %}

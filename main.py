@@ -44,7 +44,12 @@ class Course:
                 switch = doc["_switch"]
                 if doc["_stamp"] < int(time.time()):
                     switch = False
-                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "switch": switch})
+                todayArray = time.localtime(int(time.time()))
+                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    sameDay = True
+                else:
+                    sameDay = False
+                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "switch": switch, "sameDay": sameDay})
             res.reverse()
             return res
 
@@ -62,7 +67,12 @@ class Course:
                 switch = doc["_switch"]
                 if doc["_stamp"] < int(time.time()):
                     switch = False
-                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "note": doc["_note"], "switch": switch})
+                todayArray = time.localtime(int(time.time()))
+                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    sameDay = True
+                else:
+                    sameDay = False
+                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "note": doc["_note"], "switch": switch, "sameDay": sameDay})
             res.reverse()
             return res
 

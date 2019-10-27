@@ -10,12 +10,14 @@ import sys
 import pymongo
 import re
 import threading
+import json
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-with open("key/database", "r") as f:
-    content = f.readlines()
+
+with open("key/config.json", "r") as f:
+    ini = json.loads(f.read())
 db = pymongo.MongoClient(
-    f'mongodb://{content[0].strip()}@{content[1].strip()}/', int(content[2].strip()))["up"]
+    f'mongodb://{ini["db_passwd"]}@{ini["db_ip"]}/', ini["db_port"])["up"]
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'upload'
@@ -605,10 +607,8 @@ def api_upload(courseName):
         else:
             new_filename = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{ext}"  # 修改了上传的文件名
 
-        with open("key/msg", "r") as f:
-            content = f.readlines()
         requests.get(
-            f"https://api.day.app/{content[0].strip()}/有人交作业了/{courseName}: {new_filename}")
+            f"https://api.day.app/{ini['msg_key']}/有人交作业了/{courseName}: {new_filename}")
         mydoc = db["record"]
         mycol = mydoc.find_one({"_stuid": cookie.stuid, "_stuname": cookie.stuname, "_course_name": courseName})
         if mycol == None:

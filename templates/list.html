@@ -24,16 +24,24 @@
                     <h1 id="hello">你好，{{stuname}}</h1>
                     <p>请选择要提交的作业</p>
                     {% for course in courses %}
-                    {% if course["switch"] and course["sameDay"]%}
-                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/yellow.png" height=10 weight=10> {{course['name']}}</a>                    
-                    <p class="course1">截止时间：{{course['showtime']}}</p>
-                    <br>
-                    {% elif course["switch"] and not course["sameDay"]%}
+                    {% if course["status"] == 31 %}
                     <a class="course" href="/upload/{{course['name']}}"><img src="/static/green.png" height=10 weight=10> {{course['name']}}</a>                    
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
+                    {% elif course["status"] == 30 %}
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/green.gif" height=10 weight=10> {{course['name']}}</a>                    
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
+                    {% elif course["status"] == 21%}
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/yellow.png" height=10 weight=10> {{course['name']}}</a>                    
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
+                    {% elif course["status"] == 20%}
+                    <a class="course" href="/upload/{{course['name']}}"><img src="/static/yellow.gif" height=10 weight=10> {{course['name']}}</a>                    
+                    <p class="course1">截止时间：{{course['showtime']}}</p>
+                    <br>
                     {% else %}
-                    <p class="course1"><img src="/static/red.png" height=10 weight=10> {{course['name']}}</p>
+                    <p class="course1" ><img src="/static/red.png" height=10 weight=10> {{course['name']}}</a>   
                     <p class="course1">截止时间：{{course['showtime']}}</p>
                     <br>
                     {% endif %}
@@ -41,12 +49,12 @@
                     <hr>
                     <p>其他方式提交的作业，点击可查看详情</p>
                     {% for ddl in ddls %}
-                    {% if ddl["switch"] and ddl["sameDay"]%}
-                    <a class="course" href="{{ddl['note']}}"><img src="/static/yellow.png" height=10 weight=10> {{ddl['name']}}</a>                    
+                    {% if ddl["status"] == 30 %}
+                    <a class="course" href="/upload/{{ddl['name']}}"><img src="/static/green.png" height=10 weight=10> {{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
-                    {% elif ddl["switch"] and not ddl["sameDay"]%}
-                    <a class="course" href="{{ddl['note']}}"><img src="/static/green.png" height=10 weight=10> {{ddl['name']}}</a>                    
+                    {% elif ddl["status"] == 20%}
+                    <a class="course" href="/upload/{{ddl['name']}}"><img src="/static/yellow.png" height=10 weight=10> {{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% else %}

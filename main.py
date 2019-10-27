@@ -1,5 +1,4 @@
 # coding： utf8
-# 20552 
 from flask import Flask, render_template, request, make_response, send_from_directory, redirect
 import time
 import os
@@ -13,8 +12,10 @@ import re
 import threading
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+with open("key/database", "r") as f:
+    content = f.readlines()
 db = pymongo.MongoClient(
-    'mongodb://server:tdlm_server123@checkin.nuaaweyes.com/', 27017)["up"]
+    f'mongodb://{content[0].strip()}@{content[1].strip()}/', int(content[2].strip()))["up"]
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'upload'
@@ -31,48 +32,92 @@ def ClearCookies():
 
 class Course:
     @staticmethod
-    def GetSlimCourseList():
+    def GetUploadStamp(stuid, courseName):
+        mydoc = db["record"]
+        mycol = mydoc.find_one({"_stuid": stuid, "_course_name": courseName})
+        return mycol["_stamp"]
+
+    @staticmethod
+    def ChangeCourseMode(stuid, courseName):
+        mycoursedoc = db["course"]
+        myrecorddoc = db["record"]
+        mycoursecol = mycoursedoc.find_one({"_name": courseName})
+        mode = mycoursecol["_mode"]
+        if stuid:
+            status = myrecorddoc.find_one({"_stuid": stuid, "_course_name": courseName})
+        else:
+            status = None
+
+        if status == None:
+            if mode == 1:
+                return 31
+            elif mode == 2:
+                return 11
+            else:
+                timeArray = time.localtime(mycoursecol["_stamp"])
+                todayArray = time.localtime(int(time.time()))
+                if mycoursecol["_stamp"] < int(time.time()): 
+                    return 10
+                elif time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    return 20
+                else:
+                    return 30
+        else:
+            if mode == 1:
+                return 31
+            elif mode == 2:
+                return 11
+            else:
+                timeArray = time.localtime(mycoursecol["_stamp"])
+                todayArray = time.localtime(int(time.time()))
+                if mycoursecol["_stamp"] < int(time.time()): 
+                    return 11
+                elif time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    return 21
+                else:
+                    return 31
+
+    @staticmethod
+    def GetSlimCourseList(stuid):
         res = []
         mycol = db["course"]
-        mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+        student = Student()
+        student.GetStuDetail(stuid)
+        if student.admin:
+            mydoc = mycol.find({"_submitable": True, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+        else:
+            mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+
         if mydoc == None:
             return res
         else:
             for doc in mydoc:
                 timeArray = time.localtime(doc["_stamp"])
                 endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                switch = doc["_switch"]
-                if doc["_stamp"] < int(time.time()):
-                    switch = False
-                todayArray = time.localtime(int(time.time()))
-                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
-                    sameDay = True
-                else:
-                    sameDay = False
-                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "switch": switch, "sameDay": sameDay})
+                status = Course.ChangeCourseMode(stuid, doc["_name"])
+                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "status": status})
             res.reverse()
             return res
 
     @staticmethod
-    def GetSlimDdlList():
+    def GetSlimDdlList(stuid):
         res = []
         mycol = db["course"]
-        mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+        student = Student()
+        student.GetStuDetail(stuid)
+        if student.admin:
+            mydoc = mycol.find({"_submitable": False, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+        else:
+            mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+
         if mydoc == None:
             return res
         else:
             for doc in mydoc:
                 timeArray = time.localtime(doc["_stamp"])
                 endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-                switch = doc["_switch"]
-                if doc["_stamp"] < int(time.time()):
-                    switch = False
-                todayArray = time.localtime(int(time.time()))
-                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
-                    sameDay = True
-                else:
-                    sameDay = False
-                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "note": doc["_note"], "switch": switch, "sameDay": sameDay})
+                status = Course.ChangeCourseMode(stuid, doc["_name"])
+                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "status": status})
             res.reverse()
             return res
 
@@ -90,9 +135,8 @@ class Course:
             self.size = mydoc["_size"]
             self.note = mydoc["_note"]
             self.submitable = mydoc["_submitable"]
-            self.switch = mydoc["_switch"]
-            if self.stamp < int(time.time()):
-                self.switch = False
+            self.status = Course.ChangeCourseMode(stuid=None, courseName=self.name)
+
             return True
 
 
@@ -213,11 +257,11 @@ def index():
     if cookie.GetCookieDetail(request.cookies.get("id")):
         if cookie.admin:
             resp = make_response(render_template(
-                'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
+                'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
             return resp
         else:
             resp = make_response(render_template(
-                'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(), ddls=Course.GetSlimDdlList(), stamp=int(time.time())), 200)
+                'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
             return resp
 
     resp = make_response(render_template('index.html'), 200)
@@ -302,11 +346,11 @@ def resetpwd():
                     "error.html", errcode="修改失败", stuqq=student.qq))
                 resp.delete_cookie("id")
                 return resp
-                if not (re.match(r'([0-9]+(\W+|\_+|[A-Za-z]+))+|([A-Za-z]+(\W+|\_+|\d+))+|((\W+|\_+)+(\d+|\w+))+', pwd) and len(pwd) >= 8):
-                    resp = make_response(render_template(
-                        "error.html", errcode="修改失败，密码太过简单", stuqq=student.qq))
-                    resp.delete_cookie("id")
-                    return resp
+            if not (re.match(r'([0-9]+(\W+|\_+|[A-Za-z]+))+|([A-Za-z]+(\W+|\_+|\d+))+|((\W+|\_+)+(\d+|\w+))+', newpwd) and len(newpwd) >= 8):
+                resp = make_response(render_template(
+                    "error.html", errcode="修改失败，密码太过简单", stuqq=student.qq))
+                resp.delete_cookie("id")
+                return resp
             resp = make_response(render_template(
                 "success.html", fileName="修改成功"), 200)
             resp.delete_cookie("id")
@@ -448,10 +492,10 @@ def upload(courseName):
         os.makedirs(file_dir)
     filenames = os.listdir(file_dir)
     names = []
-    for i, name in enumerate(filenames):
+    for name in filenames:
         if "1617304" in name:
             continue 
-        filestamp = os.stat(f"{file_dir}/{filenames[i]}").st_mtime
+        filestamp = Course.GetUploadStamp(cookie.stuid, courseName)
         timeArray = time.localtime(filestamp)
         changetime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
         names.append({"name": name.split(".")[0], "changetime": changetime})
@@ -503,13 +547,21 @@ def api_download(courseName, stuid):
         resp = make_response(render_template(
             "error.html", errcode="文件不存在"))
         return resp
+    mydoc = db["upload"]
     if cookie.admin:
-        fileName = stuid + "." + course.ext
+        mycol = mydoc.find_one({"_stuid": stuid, "_course_name": courseName})
+        if mycol == None:
+            resp = make_response(render_template(
+                "error.html", errcode="文件不存在"))
+            return resp
+        fileName = mycol["_file_name"]
     else:
-        if course.note == "":
-            fileName = f"{cookie.stuid} - {cookie.stuname}.{course.ext}"  # 修改了上传的文件名
-        else:
-            fileName = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{course.ext}"  # 修改了上传的文件名
+        mycol = mydoc.find_one({"_stuid": cookie.stuid, "_course_name": courseName})
+        if mycol == None:
+            resp = make_response(render_template(
+                "error.html", errcode="文件不存在"))
+            return resp
+        fileName = mycol["_file_name"]
     file_dir = os.path.join(
         basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
     response = make_response(send_from_directory(
@@ -539,25 +591,34 @@ def api_upload(courseName):
     if f:  # 判断是否是允许上传的文件类型    
         fname = f.filename
         ext = fname.rsplit('.', 1)[1]  # 获取文件后缀
-        if not course.ext == ext:
+        exterr = True
+        for e in course.ext:
+            if e == ext:
+                exterr = False
+        if exterr:
             resp = make_response(render_template(
                 "error.html", errcode="文件类型错误", stuqq=cookie.stuqq))
             return resp
-        # size = len(f.read())
-        # if not course.size <= size * 1024 * 1024:
-        #     resp = make_response(render_template(
-        #         "error.html", errcode="文件过大", stuqq=cookie.stuqq))
-        #     return resp
+            
         if course.note == "":
-            new_filename = f"{cookie.stuid} - {cookie.stuname}.{course.ext}"  # 修改了上传的文件名
+            new_filename = f"{cookie.stuid} - {cookie.stuname}.{ext}"  # 修改了上传的文件名
         else:
-            new_filename = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{course.ext}"  # 修改了上传的文件名
+            new_filename = f"{cookie.stuid} - {cookie.stuname} - {course.note}.{ext}"  # 修改了上传的文件名
 
-        fn = os.path.join(file_dir, new_filename)
-        # f.seek(0,0)
-        f.save(fn)  # 保存文件到upload目录
+        with open("key/msg", "r") as f:
+            content = f.readlines()
         requests.get(
-            f"https://api.day.app/YHZ2mLaZaGjRXP5mUNTRJG/有人交作业了/{courseName}: {new_filename}")
+            f"https://api.day.app/{content[0].strip()}/有人交作业了/{courseName}: {new_filename}")
+        mydoc = db["record"]
+        mycol = mydoc.find_one({"_stuid": cookie.stuid, "_stuname": cookie.stuname, "_course_name": courseName})
+        if mycol == None:
+            mydoc.insert_one({"_stuid": cookie.stuid, "_stuname": cookie.stuname, "_course_name": courseName, "_file_name": new_filename, "_stamp": int(time.time())})
+        else:
+            oldfn = os.path.join(file_dir, mycol["_file_name"])
+            os.remove(oldfn)
+            mydoc.update_one({"_stuid": cookie.stuid, "_stuname": cookie.stuname, "_course_name": courseName}, {"$set": {"_file_name": new_filename, "_stamp": int(time.time())}})
+        fn = os.path.join(file_dir, new_filename)
+        f.save(fn)  # 保存文件到upload目录
         return render_template("success.html", stuqq=cookie.stuqq, fileName=f"{new_filename} 上传成功")
     else:
         return render_template("error.html", errcode="上传失败", stuqq=cookie.stuqq)
@@ -575,4 +636,4 @@ def internal_error(error):
 
 if __name__ == '__main__':
     threading.Thread(target=ClearCookies).start()
-    app.run(debug=True, threaded=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, threaded=True, host="0.0.0.0", port=5002)

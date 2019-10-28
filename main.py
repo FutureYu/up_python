@@ -37,6 +37,7 @@ class Course:
     def GetUploadStamp(stuid, courseName):
         mydoc = db["record"]
         mycol = mydoc.find_one({"_stuid": stuid, "_course_name": courseName})
+        # print(stuid, courseName, mycol, flush=True)
         return mycol["_stamp"]
 
     @staticmethod
@@ -482,10 +483,7 @@ def upload(courseName):
         resp = make_response(render_template(
             "error.html", errcode="作业不存在", stuqq=cookie.stuqq), 404)
         return resp
-    if int(time.time()) > course.stamp and not cookie.admin:
-        resp = make_response(render_template(
-            "error.html", errcode="作业已停止提交"), 200)
-        return resp
+
 
     # 上传文件
     file_dir = os.path.join(
@@ -497,7 +495,8 @@ def upload(courseName):
     for name in filenames:
         if "1617304" in name:
             continue 
-        filestamp = Course.GetUploadStamp(cookie.stuid, courseName)
+        stuid = name.split(" - ")[0]
+        filestamp = Course.GetUploadStamp(stuid, courseName)
         timeArray = time.localtime(filestamp)
         changetime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
         names.append({"name": name.split(".")[0], "changetime": changetime})
@@ -507,10 +506,11 @@ def upload(courseName):
         names = ["还没有人交哦~快快来交"]
     timeArray = time.localtime(course.stamp)
     endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+    ext = "，".join(course.ext)
     if cookie.admin:
-        return render_template('upload_admin.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=course.ext, size=course.size, endTime=endTime)
+        return render_template('upload_admin.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=ext, size=course.size, endTime=endTime)
     else:
-        return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=course.ext, size=course.size, endTime=endTime)
+        return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=ext, size=course.size, endTime=endTime, upload=(int(time.time()) > course.stamp))
 
 
 @app.route('/api/download/all/<courseName>', methods=['GET'], strict_slashes=False)
@@ -536,8 +536,8 @@ def api_download_all(courseName):
         file_dir, fileName, as_attachment=True, attachment_filename=fileName))
     return response
 
-@app.route('/api/download/<courseName>/<stuid>', methods=['GET'], strict_slashes=False)
-def api_download(courseName, stuid):
+@app.route('/api/download/<courseName>/<fileName>', methods=['GET'], strict_slashes=False)
+def api_download(courseName, fileName):
     cookie = Cookie()
     if not cookie.GetCookieDetail(request.cookies.get("id")):
         resp = make_response(render_template(
@@ -547,21 +547,23 @@ def api_download(courseName, stuid):
     course = Course()
     if not course.GetCourseDetail(courseName):
         resp = make_response(render_template(
-            "error.html", errcode="文件不存在"))
+            "error.html", errcode="文件不存在1"))
         return resp
-    mydoc = db["upload"]
+    mydoc = db["record"]
+    stuid = fileName.split("-")[0].strip()
     if cookie.admin:
+        print({"_stuid": stuid, "_course_name": courseName}, flush=True)
         mycol = mydoc.find_one({"_stuid": stuid, "_course_name": courseName})
         if mycol == None:
             resp = make_response(render_template(
-                "error.html", errcode="文件不存在"))
+                "error.html", errcode="文件不存在2"))
             return resp
         fileName = mycol["_file_name"]
     else:
         mycol = mydoc.find_one({"_stuid": cookie.stuid, "_course_name": courseName})
         if mycol == None:
             resp = make_response(render_template(
-                "error.html", errcode="文件不存在"))
+                "error.html", errcode="文件不存在3"))
             return resp
         fileName = mycol["_file_name"]
     file_dir = os.path.join(
@@ -585,6 +587,12 @@ def api_upload(courseName):
         resp = make_response(render_template(
             "error.html", errcode="作业名错误", stuqq=cookie.stuqq))
         return resp
+
+    if int(time.time()) > course.stamp and not cookie.admin:
+        resp = make_response(render_template(
+            "error.html", errcode="作业已停止提交"), 200)
+        return resp
+
     file_dir = os.path.join(
         basedir, app.config['UPLOAD_FOLDER']) + f"/{courseName}"
     if not os.path.exists(file_dir):
@@ -636,4 +644,4 @@ def internal_error(error):
 
 if __name__ == '__main__':
     threading.Thread(target=ClearCookies).start()
-    app.run(debug=True, threaded=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, threaded=True, host="0.0.0.0", port=5000)

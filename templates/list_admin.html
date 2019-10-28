@@ -50,15 +50,15 @@
                     <p>其他方式提交的作业，点击可查看详情</p>
                     {% for ddl in ddls %}
                     {% if ddl["status"] == 30 %}
-                    <a class="course" href="/upload/{{ddl['name']}}"><img src="/static/green.png" height=10 weight=10> {{ddl['name']}}</a>                    
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/green.png" height=10 weight=10> {{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% elif ddl["status"] == 20%}
-                    <a class="course" href="/upload/{{ddl['name']}}"><img src="/static/yellow.png" height=10 weight=10> {{ddl['name']}}</a>                    
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/yellow.png" height=10 weight=10> {{ddl['name']}}</a>                    
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="/upload/{{ddl['name']}}"><img src="/static/red.png" height=10 weight=10> {{ddl['name']}}</a>   
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/red.png" height=10 weight=10> {{ddl['name']}}</a>   
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% endif %}

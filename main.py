@@ -11,6 +11,7 @@ import pymongo
 import re
 import threading
 import json
+from tools import TimeTool
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -22,15 +23,10 @@ db = pymongo.MongoClient(
 app = Flask(__name__)
 UPLOAD_FOLDER = 'upload'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 12 * 1024 * 1024
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-def ClearCookies():
-    mydoc = db["cookie"] 
-    while True:
-        print("clear cookies", flush=True)
-        mydoc.delete_many({"_stamp": {'$lt': time.time() - 60 * 60}})
-        time.sleep(3600)
+
 
 class Course:
     @staticmethod
@@ -50,15 +46,17 @@ class Course:
             status = myrecorddoc.find_one({"_stuid": stuid, "_course_name": courseName})
         else:
             status = None
-
+        timeArray = time.localtime(mycoursecol["_stamp"])
+        todayArray = time.localtime(int(time.time()))
         if status == None:
             if mode == 1:
-                return 31
+                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    return 21
+                else:
+                    return 31
             elif mode == 2:
                 return 11
             else:
-                timeArray = time.localtime(mycoursecol["_stamp"])
-                todayArray = time.localtime(int(time.time()))
                 if mycoursecol["_stamp"] < int(time.time()): 
                     return 10
                 elif time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
@@ -67,7 +65,10 @@ class Course:
                     return 30
         else:
             if mode == 1:
-                return 31
+                if time.strftime("%Y-%m-%d", timeArray) == time.strftime("%Y-%m-%d", todayArray):
+                    return 21
+                else:
+                    return 31
             elif mode == 2:
                 return 11
             else:
@@ -87,16 +88,16 @@ class Course:
         student = Student()
         student.GetStuDetail(stuid)
         if student.admin:
-            mydoc = mycol.find({"_submitable": True, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+            mydoc = mycol.find({"_submitable": True, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(7) 
         else:
-            mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+            mydoc = mycol.find({"_submitable": True}).sort('_stamp', pymongo.DESCENDING).limit(7) 
 
         if mydoc == None:
             return res
         else:
             for doc in mydoc:
-                timeArray = time.localtime(doc["_stamp"])
-                endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+                print(doc, flush=True)
+                endTime = TimeTool.Stamp2FullStr(doc["_stamp"])
                 status = Course.ChangeCourseMode(stuid, doc["_name"])
                 res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "status": status})
             res.reverse()
@@ -109,18 +110,17 @@ class Course:
         student = Student()
         student.GetStuDetail(stuid)
         if student.admin:
-            mydoc = mycol.find({"_submitable": False, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+            mydoc = mycol.find({"_submitable": False, '_stus': stuid}).sort('_stamp', pymongo.DESCENDING).limit(7) 
         else:
-            mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.DESCENDING).limit(6) 
+            mydoc = mycol.find({"_submitable": False}).sort('_stamp', pymongo.DESCENDING).limit(7) 
 
         if mydoc == None:
             return res
         else:
             for doc in mydoc:
-                timeArray = time.localtime(doc["_stamp"])
-                endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+                endTime = TimeTool.Stamp2FullStr(doc["_stamp"])
                 status = Course.ChangeCourseMode(stuid, doc["_name"])
-                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "status": status})
+                res.append({"name": doc["_name"], "stamp": doc["_stamp"], "showtime":endTime, "status": status, "note": doc["_note"]})
             res.reverse()
             return res
 
@@ -160,12 +160,19 @@ class Cookie:
             self.level = mydoc["_level"]
             self.stamp = mydoc["_stamp"]
             self.admin = mydoc["_admin"]
-            if mydoc["_stamp"] + 360 < int(time.time()):
+            if mydoc["_stamp"] + 7 * 24 * 60 * 60 < int(time.time()):
                 return False
             else:
                 if mydoc["_level"] != 1:
                     return False
                 return True
+    @staticmethod
+    def ClearCookies():
+        mydoc = db["cookie"] 
+        while True:
+            print("clear cookies", flush=True)
+            mydoc.delete_many({"_stamp": {'$lt': time.time() - 8 * 24 * 60 * 60}}) # 8天
+            time.sleep(8 * 24 * 60 * 60)
 
     def GetTmpCookieDetail(self, content):
         if content == None:
@@ -183,7 +190,7 @@ class Cookie:
             self.level = mydoc["_level"]
             self.stamp = mydoc["_stamp"]
             self.admin = mydoc["_admin"]
-            if mydoc["_stamp"] + 360 < int(time.time()):
+            if mydoc["_stamp"] + 5 * 60 < int(time.time()):
                 return False
             else:
                 if mydoc["_level"] == 1:
@@ -210,6 +217,11 @@ class Cookie:
         self.level = level
         self.stamp = stamp
         self.admin = mydoc1["_admin"]
+        return True
+
+    def RenewCookie(self, content):
+        mycol = db["cookie"]
+        mycol.update_one({"_content": content}, {"$set": {"_stamp": int(time.time())}})
         return True
 
 
@@ -258,13 +270,17 @@ class Student:
 def index():
     cookie = Cookie()
     if cookie.GetCookieDetail(request.cookies.get("id")):
+        # 免登录，生成新cookie
+        cookie.RenewCookie(cookie.content)
         if cookie.admin:
             resp = make_response(render_template(
                 'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
+            resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
             return resp
         else:
             resp = make_response(render_template(
                 'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
+            resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
             return resp
 
     resp = make_response(render_template('index.html'), 200)
@@ -291,7 +307,7 @@ def forgetstuid():
 
     resp = make_response(render_template(
         'forget.html', que=student.que, stuid=student.stuid, stuqq=student.qq), 200)
-    resp.set_cookie("id", cookie.content, max_age=360)
+    resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
     return resp
 
 
@@ -315,6 +331,12 @@ def forgetpwd():
         'reset.html', forget=True, login=True, stuid=student.stuid, stuqq=student.qq), 200)
     return resp
 
+@app.route("/logout", methods=['GET'])
+def logout():
+    resp = make_response(render_template(
+        "success.html", fileName="成功"))
+    resp.delete_cookie("id")
+    return resp
 
 @app.route("/reset", methods=['GET'])
 def reset():
@@ -453,7 +475,7 @@ def login():
     if stu.que == "" or stu.ans == "":
         resp = make_response(render_template(
             'bind.html', stuqq=stu.qq, stuid=stu.stuid, stuname=stu.name), 200)
-        resp.set_cookie("id", cookie.content, max_age=360)
+        resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
         return resp
 
 
@@ -465,7 +487,7 @@ def login():
     # 结束维护
 
     resp = make_response(redirect("/index"))
-    resp.set_cookie("id", cookie.content, max_age=360)
+    resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
     return resp
 
 
@@ -497,20 +519,19 @@ def upload(courseName):
             continue 
         stuid = name.split(" - ")[0]
         filestamp = Course.GetUploadStamp(stuid, courseName)
-        timeArray = time.localtime(filestamp)
-        changetime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+        changetime = TimeTool.Stamp2FullStr(filestamp)
         names.append({"name": name.split(".")[0], "changetime": changetime})
     names.sort(key=lambda name: name["name"])
     num = len(names)
     if len(names) == 0:
         names = ["还没有人交哦~快快来交"]
-    timeArray = time.localtime(course.stamp)
-    endTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+    endTime = TimeTool.Stamp2FullStr(course.stamp)
     ext = "，".join(course.ext)
     if cookie.admin:
         return render_template('upload_admin.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=ext, size=course.size, endTime=endTime)
     else:
-        return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=ext, size=course.size, endTime=endTime, upload=(int(time.time()) > course.stamp))
+        return render_template('upload.html', num = num, stuqq=cookie.stuqq, stuname=cookie.stuname, courseName=courseName, names=names, ext=ext, size=course.size, endTime=endTime, upload=course.status >= 20)
+
 
 
 @app.route('/api/download/all/<courseName>', methods=['GET'], strict_slashes=False)
@@ -588,7 +609,7 @@ def api_upload(courseName):
             "error.html", errcode="作业名错误", stuqq=cookie.stuqq))
         return resp
 
-    if int(time.time()) > course.stamp and not cookie.admin:
+    if course.status < 20 and not cookie.admin:
         resp = make_response(render_template(
             "error.html", errcode="作业已停止提交"), 200)
         return resp
@@ -643,5 +664,5 @@ def internal_error(error):
 
 
 if __name__ == '__main__':
-    threading.Thread(target=ClearCookies).start()
+    threading.Thread(target=Cookie.ClearCookies).start()
     app.run(debug=False, threaded=True, host="0.0.0.0", port=5000)

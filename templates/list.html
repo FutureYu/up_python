@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>作业列表—写完了吗</title>
+    <title>写完了吗</title>
     <link rel="stylesheet" href="/static/list.css">
     <link rel="shortcut icon" href="/static/favicon.ico" />
 </head>
@@ -22,6 +22,7 @@
             <div class="lowin-box lowin-login">
                 <div class="lowin-box-inner">
                     <h1 id="hello">你好，{{stuname}}</h1>
+                    <p>当前时间：{{showtime}}</p>
                     <p>请选择要提交的作业</p>
                     {% for course in courses %}
                     {% if course["status"] == 31 %}
@@ -58,7 +59,7 @@
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% else %}
-                    <a class="course" href="{{ddl['note']}}"><img src="/static/red.png" height=10 weight=10> {{ddl['name']}}</p>
+                    <a class="course" href="{{ddl['note']}}"><img src="/static/red.png" height=10 weight=10> {{ddl['name']}}</a>
                     <p class="course1">截止时间：{{ddl['showtime']}}</p>
                     <br>
                     {% endif %}

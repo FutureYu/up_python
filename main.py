@@ -270,18 +270,14 @@ class Student:
 def index():
     cookie = Cookie()
     if cookie.GetCookieDetail(request.cookies.get("id")):
-        # 免登录，生成新cookie
+        # 免登录，更新cookie
         cookie.RenewCookie(cookie.content)
-        if cookie.admin:
-            resp = make_response(render_template(
-                'list_admin.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
-            resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
-            return resp
-        else:
-            resp = make_response(render_template(
-                'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=int(time.time())), 200)
-            resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
-            return resp
+        nowStamp = int(time.time())
+        showtime = TimeTool.Stamp2FullStr(nowStamp)
+        resp = make_response(render_template(
+            'list.html', stuqq=cookie.stuqq, stuid=cookie.stuid, stuname=cookie.stuname, courses=Course.GetSlimCourseList(cookie.stuid), ddls=Course.GetSlimDdlList(cookie.stuid), stamp=nowStamp, showtime=showtime), 200)
+        resp.set_cookie("id", cookie.content, max_age=7 * 24 * 60 * 60)
+        return resp
 
     resp = make_response(render_template('index.html'), 200)
     resp.delete_cookie("id")
